@@ -553,6 +553,16 @@ The optional integration test exercises the real ComfyUI cast path with
 FP16 storage/BF16 inputs, weight patches and CPU-to-MPS reloads. It requires
 ComfyUI's Python environment and an available Apple GPU.
 
+The image-to-video offload node also aligns both canvas dimensions to the
+nearest multiple of 32 (ties round up, minimum 32) before native conditioning.
+H3's 16x VAE compression and 2x2 latent patches require this alignment. For
+example, a Resolution Selector using multiple=24 can produce 336x600, which
+previously failed in `patchify_video` after model loading; it now uses 352x608
+for both the first/last-frame conditioning and the output latent. Already
+compatible dimensions stay unchanged, original input images are untouched,
+and the requested/actual dimensions are logged. Existing Apple GPU and local
+Qwen H3 workflows use this node and require no rewiring.
+
 ## Local Qwen prompt enhancement and reuse
 
 `本地 Qwen3.8 · 提示词增强/复用` (`LocalQwenPromptEnhancer`) calls an existing
