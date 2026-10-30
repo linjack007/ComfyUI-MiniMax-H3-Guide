@@ -57,3 +57,10 @@ else:
     import mps_loader
 NODE_CLASS_MAPPINGS.update(mps_loader.NODE_CLASS_MAPPINGS)
 NODE_DISPLAY_NAME_MAPPINGS.update(mps_loader.NODE_DISPLAY_NAME_MAPPINGS)
+
+if __package__:
+    from . import local_qwen
+else:
+    import local_qwen
+NODE_CLASS_MAPPINGS.update(local_qwen.NODE_CLASS_MAPPINGS)
+NODE_DISPLAY_NAME_MAPPINGS.update(local_qwen.NODE_DISPLAY_NAME_MAPPINGS)

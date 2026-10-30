@@ -552,3 +552,48 @@ COMFYUI_PATH=/path/to/ComfyUI pytest -q tests/test_mps_comfy_integration.py
 The optional integration test exercises the real ComfyUI cast path with
 FP16 storage/BF16 inputs, weight patches and CPU-to-MPS reloads. It requires
 ComfyUI's Python environment and an available Apple GPU.
+
+## Local Qwen prompt enhancement and reuse
+
+`本地 Qwen3.8 · 提示词增强/复用` (`LocalQwenPromptEnhancer`) calls an existing
+local Ollama service, defaulting to `qwen3.8:27b` at `http://127.0.0.1:11434`.
+It does not download or install models. The service must support chat and,
+when an image is connected, vision input. The shipped workflows use:
+
+- `Local-Qwen3.8-Prompt-Only.json`: generate and review text independently.
+- `MiniMax-H3-I2V-Local-Qwen3.8.json`: local enhancement followed by native H3
+  first-frame conditioning and video generation. H3 still needs its matching
+  Qwen 32B conditioning encoder; the generation tail is not used.
+- `Wan2.2-I2V-Local-Qwen3.8.json`: local enhancement, UMT5 and Wan image-to-video
+  conditioning. The original image connects directly to `start_image`. This
+  example uses ComfyUI-GGUF, the A14B high/low-noise I2V weights and matching
+  LightX2V 4-step LoRAs. It does not use the H3 encoder, tail or audio nodes.
+
+Turn `enabled` off to send `draft` directly to the video workflow. In
+`自动生成并缓存` mode, identical model, target format, draft, image, token budget
+and revision reuse the result saved under `user/local_qwen/prompt_cache/`.
+Video seed, dimensions and sampling steps do not invalidate that text cache.
+Changing the reference image, draft or target format does. Cache records
+contain generated text and timing metadata, not image files. They survive
+ComfyUI restarts and are shared by the standalone and video workflows.
+
+After running, click **复用本次结果** to copy the returned prompt into
+`reuse_text` and select **复用文本** mode. That text remains editable and is
+saved with the workflow. Click **下次运行重新增强** to increment `revision` and
+return to automatic generation on the next Run. Bypass, explicit text reuse
+and cache hits make no model request; they work when Ollama is offline.
+
+Only the enhancer's image copy is resized (maximum edge 512 pixels). The
+original first frame is preserved for the video branch. H3 and Wan have
+separate output templates. The node validates the generated JSON and builds
+the H3 section headers itself; incomplete/truncated output is not cached.
+The local Ollama MLX backend tested here rejects structured-output requests,
+so the format is requested in the system prompt and checked locally.
+
+Requests are restricted to explicit loopback IP addresses, bypass system
+proxies and do not follow redirects. Thinking is disabled for this rewrite
+step. Before an uncached request the node offloads idle ComfyUI models; it
+requests `keep_alive: 0` so Ollama releases its model after enhancement.
+Cancellation closes the in-flight request. Model/service errors are surfaced
+without replacing saved text or silently starting video generation with a
+failed enhancement.

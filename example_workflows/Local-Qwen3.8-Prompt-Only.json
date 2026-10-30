@@ -1,0 +1,228 @@
+{
+  "id": "b047c861-e4e4-42a0-8fed-aff50f87aecc",
+  "revision": 0,
+  "nodes": [
+    {
+      "id": 71,
+      "type": "LoadImage",
+      "pos": [
+        0,
+        220
+      ],
+      "size": [
+        450,
+        600
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            240
+          ]
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "transparent_rgb_gaming_mouse.png",
+        "image"
+      ],
+      "title": "参考首帧（仅用于看图增强）"
+    },
+    {
+      "id": 130,
+      "type": "LocalQwenPromptEnhancer",
+      "pos": [
+        520,
+        220
+      ],
+      "size": [
+        540,
+        700
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "shape": 7,
+          "link": 240
+        }
+      ],
+      "outputs": [
+        {
+          "name": "prompt",
+          "type": "STRING",
+          "links": [
+            242
+          ]
+        },
+        {
+          "name": "report",
+          "type": "STRING",
+          "links": [
+            243
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LocalQwenPromptEnhancer"
+      },
+      "widgets_values": [
+        true,
+        "自动生成并缓存",
+        "MiniMax H3 首帧视频",
+        "A transparent gaming mouse on a dark reflective surface. Blue and orange light pulses through the shell. A slow camera push-in reveals the circuitry. End with a soft electronic glow.",
+        "",
+        "qwen3.8:27b",
+        "http://127.0.0.1:11434",
+        384,
+        0
+      ],
+      "title": "① 本地 Qwen3.8 · 开关 / 自动缓存 / 文本复用"
+    },
+    {
+      "id": 131,
+      "type": "PreviewAny",
+      "pos": [
+        1120,
+        220
+      ],
+      "size": [
+        540,
+        280
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 242
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": []
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": [],
+      "title": "可复制、可编辑的增强提示词"
+    },
+    {
+      "id": 132,
+      "type": "PreviewAny",
+      "pos": [
+        1120,
+        650
+      ],
+      "size": [
+        540,
+        180
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source",
+          "type": "*",
+          "link": 243
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": []
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PreviewAny"
+      },
+      "widgets_values": [],
+      "title": "增强状态 / 耗时 / 复用记录"
+    },
+    {
+      "id": 133,
+      "type": "MarkdownNote",
+      "pos": [
+        0,
+        -80
+      ],
+      "size": [
+        1000,
+        260
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "## 本地 Qwen3.8：独立增强，可关闭、可复用\nenabled=false：直接使用 draft，不调用模型。\n自动生成并缓存：相同图片、原文、目标格式自动复用；改视频种子、步数、尺寸不会重新增强。\n生成后点击「复用本次结果」，可编辑 reuse_text；再次运行不调用模型。\n点击「下次运行重新增强」后再点运行，会生成新版本。\n也可先在 Local-Qwen3.8-Prompt-Only 中增强；相同输入会跨工作流复用磁盘缓存。\n原图直接用于视频首帧；Qwen 只接收 512 像素以内的看图副本。\n独立步骤：选择目标格式后运行，只生成提示词，不加载视频模型。"
+      ]
+    }
+  ],
+  "links": [
+    [
+      240,
+      71,
+      0,
+      130,
+      0,
+      "IMAGE"
+    ],
+    [
+      242,
+      130,
+      0,
+      131,
+      0,
+      "STRING"
+    ],
+    [
+      243,
+      130,
+      1,
+      132,
+      0,
+      "STRING"
+    ]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {
+    "frontendVersion": "1.57.4",
+    "ds": {
+      "scale": 0.6,
+      "offset": [
+        100,
+        300
+      ]
+    }
+  },
+  "version": 0.4,
+  "last_node_id": 133,
+  "last_link_id": 243
+}
