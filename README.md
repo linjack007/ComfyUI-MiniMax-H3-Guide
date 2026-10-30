@@ -501,3 +501,99 @@ MiniMax tokenizer are absent.
 ```bash
 pytest -q
 ```
+
+## Apple GPU (MPS) prompt enhancement
+
+`MiniMax H3 Qwen Loader (Apple GPU)` explicitly loads the MiniMax encoder on
+MPS and keeps its offload device on CPU. Connect its CLIP output to both the
+Prompt Enhancer and `MiniMax H3 Image to Video (offload CLIP)`.
+The latter delegates conditioning to the native H3 node, then releases the
+encoder before loading the video model, including on an interrupted encode. The optional generation tail
+follows the encoder's load device. Keep `offload_after_generation` enabled;
+`--gpu-only` is unnecessary and prevents CPU offloading.
+
+On supported INT8 weights, the loader uses ComfyUI's normal quantized-weight,
+casting and offloading machinery with an MPS-specific floating-point linear
+operation. ConvRot is applied to the activation instead of repeatedly
+unrotating the whole weight matrix. Weights remain INT8, accumulation and
+scaling use FP32, and activations are not quantized again. Weight/bias patches
+and other quantization layouts use the native path. This does not patch
+ComfyUI globals or alter the model files.
+
+The example `MiniMax-H3-I2V-Enhancer-Apple-GPU.json` retains the original image
+for video generation and resizes only the enhancer's image to 0.25 megapixels.
+It uses a concise I2VA system prompt, deterministic decoding, a 512-token limit, and the published INT8
+base/tail pair. Its example input is the gaming-mouse image from the official
+H3 template; supply your own input image if that template asset is unavailable.
+The three required H3 sections and first-frame alignment instruction are
+preserved. Inspect the enhancer report for structure or token-limit warnings
+before using the generated text. Complex multi-reference work should retain
+the standard system prompt and a larger token budget.
+
+The report includes execution device, token count and elapsed generation time
+(including load/offload). Server logs also show actual MPS activation and
+weight devices, decode throughput, and memory after offload. A cold load takes
+longer than a repeated run; complete video generation adds separate sampling
+and VAE time.
+
+Validated locally on a 64 GB Apple M5 Pro with PyTorch 2.15.0, ComfyUI 0.43.0
+(`426f5eea`) and comfy-kitchen 0.2.40. The INT8 base plus tail occupy roughly
+32 GiB before temporary buffers; allow additional unified memory for the OS
+and other applications. This is not a claim of compatibility with every Mac
+or older ComfyUI/PyTorch version.
+
+Tests:
+
+```sh
+pytest -q
+COMFYUI_PATH=/path/to/ComfyUI pytest -q tests/test_mps_comfy_integration.py
+```
+
+The optional integration test exercises the real ComfyUI cast path with
+FP16 storage/BF16 inputs, weight patches and CPU-to-MPS reloads. It requires
+ComfyUI's Python environment and an available Apple GPU.
+
+## Local Qwen prompt enhancement and reuse
+
+`本地 Qwen3.8 · 提示词增强/复用` (`LocalQwenPromptEnhancer`) calls an existing
+local Ollama service, defaulting to `qwen3.8:27b` at `http://127.0.0.1:11434`.
+It does not download or install models. The service must support chat and,
+when an image is connected, vision input. The shipped workflows use:
+
+- `Local-Qwen3.8-Prompt-Only.json`: generate and review text independently.
+- `MiniMax-H3-I2V-Local-Qwen3.8.json`: local enhancement followed by native H3
+  first-frame conditioning and video generation. H3 still needs its matching
+  Qwen 32B conditioning encoder; the generation tail is not used.
+- `Wan2.2-I2V-Local-Qwen3.8.json`: local enhancement, UMT5 and Wan image-to-video
+  conditioning. The original image connects directly to `start_image`. This
+  example uses ComfyUI-GGUF, the A14B high/low-noise I2V weights and matching
+  LightX2V 4-step LoRAs. It does not use the H3 encoder, tail or audio nodes.
+
+Turn `enabled` off to send `draft` directly to the video workflow. In
+`自动生成并缓存` mode, identical model, target format, draft, image, token budget
+and revision reuse the result saved under `user/local_qwen/prompt_cache/`.
+Video seed, dimensions and sampling steps do not invalidate that text cache.
+Changing the reference image, draft or target format does. Cache records
+contain generated text and timing metadata, not image files. They survive
+ComfyUI restarts and are shared by the standalone and video workflows.
+
+After running, click **复用本次结果** to copy the returned prompt into
+`reuse_text` and select **复用文本** mode. That text remains editable and is
+saved with the workflow. Click **下次运行重新增强** to increment `revision` and
+return to automatic generation on the next Run. Bypass, explicit text reuse
+and cache hits make no model request; they work when Ollama is offline.
+
+Only the enhancer's image copy is resized (maximum edge 512 pixels). The
+original first frame is preserved for the video branch. H3 and Wan have
+separate output templates. The node validates the generated JSON and builds
+the H3 section headers itself; incomplete/truncated output is not cached.
+The local Ollama MLX backend tested here rejects structured-output requests,
+so the format is requested in the system prompt and checked locally.
+
+Requests are restricted to explicit loopback IP addresses, bypass system
+proxies and do not follow redirects. Thinking is disabled for this rewrite
+step. Before an uncached request the node offloads idle ComfyUI models; it
+requests `keep_alive: 0` so Ollama releases its model after enhancement.
+Cancellation closes the in-flight request. Model/service errors are surfaced
+without replacing saved text or silently starting video generation with a
+failed enhancement.

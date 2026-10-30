@@ -8,8 +8,11 @@ and the LM head while text is generated. It never changes the connected CLIP.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import lru_cache
 import gc
+import logging
 import re
+import time
 import traceback
 
 import torch
@@ -102,6 +105,7 @@ def _validate_int8_head(weight, qdata, scale):
             )
 
 
+@lru_cache(maxsize=8)
 def _hadamard(size, device, dtype=torch.float32):
     h4 = torch.tensor(
         [[1, 1, 1, -1], [1, 1, -1, 1],
@@ -264,6 +268,12 @@ def _build_tail(name, load_device, offload_device):
         if quantization is not None
         else comfy.ops.manual_cast
     )
+    if load_device.type == "mps" and quantization is not None:
+        if __package__:
+            from .mps_ops import mixed_precision_ops
+        else:
+            from mps_ops import mixed_precision_ops
+        operations = mixed_precision_ops(quantization, dtype)
     parameters = comfy.utils.calculate_parameters(state)
     initial_device = comfy.model_management.text_encoder_initial_device(
         load_device,
@@ -366,6 +376,9 @@ def _generate_tail_tokens(
     )
     generated = []
     progress = comfy.utils.ProgressBar(max_new_tokens)
+    started = time.perf_counter()
+    logging.info("MiniMax H3 generation: device=%s, dtype=%s, input_tokens=%d, limit=%d",
+                 embeds.device, embeds.dtype, embeds.shape[1], max_new_tokens)
     next_pos = (
         int(position_ids[:, -1].max()) + 1
         if position_ids is not None
@@ -402,6 +415,13 @@ def _generate_tail_tokens(
         position_ids = torch.tensor([[next_pos]], device=load_device)
         next_pos += 1
         comfy.model_management.throw_exception_if_processing_interrupted()
+    elapsed = time.perf_counter() - started
+    logging.info("MiniMax H3 generated %d tokens on %s in %.2fs (%.2f tokens/s)",
+                 len(generated), embeds.device, elapsed, len(generated) / max(elapsed, 1e-9))
+    if load_device.type == "mps":
+        logging.info("MiniMax H3 MPS memory: tensors=%.2f GiB, driver=%.2f GiB",
+                     torch.mps.current_allocated_memory() / 1024**3,
+                     torch.mps.driver_allocated_memory() / 1024**3)
     return generated
 
 

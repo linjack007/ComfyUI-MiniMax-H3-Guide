@@ -167,10 +167,21 @@ def test_enhancer_generates_and_returns_clean_text_artifacts():
     assert "Recommended mode: T2VA" in llm_prompt
     assert clip.generate_call["max_length"] == 1400
     assert clip.generate_call["do_sample"] is True
-    assert report == (
+    assert report.startswith(
         "Resolved H3 output family: T2VA. Enhancement completed successfully with the "
         "connected complete CLIP."
     )
+    assert "Generation: 3 tokens," in report
+    assert "device=unknown" in report
+    assert "Token limit reached" not in report
+
+
+def test_enhancer_reports_token_limit_for_review():
+    clip = FakeClip(VALID_BASE_PROMPT)
+    *_, report = MiniMaxH3PromptEnhancer().enhance(
+        clip=clip, **enhancer_kwargs(max_new_tokens=3)
+    )
+    assert "Token limit reached" in report
 
 
 def test_enhancer_passes_optional_image_to_qwen_tokenizer():

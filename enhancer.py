@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from collections import Counter
 import hashlib
+import logging
 import re
+import time
 import traceback
 
 try:
@@ -75,6 +77,12 @@ def _offload_connected_clip(clip) -> str:
             if "all_devices" not in str(exc):
                 raise
             unload(patcher, unload_additional_models=False)
+        if getattr(load_device, "type", None) == "mps":
+            import torch
+
+            logging.info("MiniMax H3 after CLIP offload: MPS tensors=%.2f GiB, driver=%.2f GiB",
+                         torch.mps.current_allocated_memory() / 1024**3,
+                         torch.mps.driver_allocated_memory() / 1024**3)
     except Exception as exc:  # Return generated text when ordinary cleanup fails.
         return f"failed: {type(exc).__name__}: {exc}"
     return "offloaded"
@@ -1282,6 +1290,7 @@ class MiniMaxH3PromptEnhancer:
             "seed": seed,
         }
         clip_offload_status = "disabled"
+        generation_started = time.perf_counter()
         generation_error = generation_traceback = None
         try:
             if tail_name is None:
@@ -1360,6 +1369,15 @@ class MiniMaxH3PromptEnhancer:
         clip_offload_note = _clip_offload_report(clip_offload_status)
         if clip_offload_note:
             report = f"{report} {clip_offload_note}"
+
+        device = getattr(getattr(clip, "patcher", None), "load_device", "unknown")
+        report += (
+            f" Generation: {len(generated_ids)} tokens, "
+            f"{time.perf_counter() - generation_started:.1f}s including model loading/offload, "
+            f"device={device}."
+        )
+        if len(generated_ids) >= max_new_tokens:
+            report += " Token limit reached; check for an unfinished prompt before generating video."
 
         return (enhanced_prompt, resolved_system_prompt, llm_prompt, report)
 
