@@ -2,6 +2,14 @@
 
 import logging
 
+
+def align_h3_dimensions(width, height):
+    """H3's 16x VAE compression and 2x2 patches require 32-pixel axes."""
+    if width <= 0 or height <= 0:
+        raise ValueError("MiniMax H3 width and height must be positive.")
+    return tuple(max(32, ((value + 16) // 32) * 32) for value in (width, height))
+
+
 class MiniMaxH3MPSCLIPLoader:
     @classmethod
     def INPUT_TYPES(cls):
@@ -75,7 +83,8 @@ class MiniMaxH3ImageToVideoOffload:
     FUNCTION = "encode"
     CATEGORY = "MiniMax H3"
     DESCRIPTION = (
-        "Use native MiniMax H3 image-to-video conditioning, then offload the "
+        "Round width and height to the nearest multiple of 32 (ties round up) "
+        "before native MiniMax H3 image-to-video conditioning, then offload the "
         "connected CLIP before video sampling. Useful for large Apple GPU encoders."
     )
 
@@ -87,6 +96,14 @@ class MiniMaxH3ImageToVideoOffload:
             from enhancer import _offload_connected_clip
 
         try:
+            requested = (kwargs["width"], kwargs["height"])
+            aligned = align_h3_dimensions(*requested)
+            if aligned != requested:
+                logging.info(
+                    "MiniMax H3 canvas aligned: %sx%s -> %sx%s (multiple of 32)",
+                    *requested, *aligned,
+                )
+            kwargs["width"], kwargs["height"] = aligned
             return MiniMaxH3ImageToVideo.execute(clip=clip, **kwargs).result
         finally:
             status = _offload_connected_clip(clip)
