@@ -12,6 +12,15 @@ def align_h3_dimensions(width, height):
 
 class MiniMaxH3MPSCLIPLoader:
     @classmethod
+    def IS_CHANGED(cls, clip_name):
+        import folder_paths
+        if __package__:
+            from .reusable_enhancer import file_identity
+        else:
+            from reusable_enhancer import file_identity
+        return file_identity(folder_paths.get_full_path_or_raise("text_encoders", clip_name))
+
+    @classmethod
     def INPUT_TYPES(cls):
         import folder_paths
 
@@ -62,6 +71,7 @@ class MiniMaxH3MPSCLIPLoader:
             clip_type=comfy.sd.CLIPType.MINIMAX,
             model_options=model_options,
         )
+        clip.minimax_h3_checkpoint = self.IS_CHANGED(clip_name)
         logging.info(
             "MiniMax H3 Qwen: execution=%s, offload=%s",
             clip.patcher.load_device, clip.patcher.offload_device,

@@ -64,3 +64,10 @@ else:
     import local_qwen
 NODE_CLASS_MAPPINGS.update(local_qwen.NODE_CLASS_MAPPINGS)
 NODE_DISPLAY_NAME_MAPPINGS.update(local_qwen.NODE_DISPLAY_NAME_MAPPINGS)
+
+if __package__:
+    from . import reusable_enhancer
+else:
+    import reusable_enhancer
+NODE_CLASS_MAPPINGS.update(reusable_enhancer.NODE_CLASS_MAPPINGS)
+NODE_DISPLAY_NAME_MAPPINGS.update(reusable_enhancer.NODE_DISPLAY_NAME_MAPPINGS)
