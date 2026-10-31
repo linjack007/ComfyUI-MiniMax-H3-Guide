@@ -607,3 +607,44 @@ requests `keep_alive: 0` so Ollama releases its model after enhancement.
 Cancellation closes the in-flight request. Model/service errors are surfaced
 without replacing saved text or silently starting video generation with a
 failed enhancement.
+
+## Qwen 32B reuse and Turbo 8-step upgrade
+
+`MiniMax-H3-I2V-Enhancer-Apple-GPU-Reuse-Turbo8.json` is a separate upgrade;
+the original Apple GPU example is unchanged. It keeps the same Qwen 32B
+encoder and generation tail. The enhancement controls are on the main canvas:
+
+- Turn `enabled` off to use `manual_prompt` unchanged.
+- `自动生成并缓存` saves a successful rewrite to
+  `user/minimax_h3/prompt_cache/`. The key includes the image pixels, draft,
+  resolved system prompt, generation settings, base/tail file identity and
+  `revision`. It excludes video seed, canvas dimensions and video duration.
+- Click **复用本次结果** to fill editable `reuse_text` and switch to
+  **复用文本**. Save the workflow to retain the text, or click
+  **导出提示词.txt** to download it. After changing the scene/image, return
+  to automatic mode or check the reused text yourself.
+- Click **下次运行重新增强** to increase `revision` and generate a new
+  version on the next Run. Existing cache files are retained.
+
+The cache survives backend restarts and stores text/reports, not image data.
+Errors, fallback text and token-limit truncations do not become successful
+cache entries or start downstream video sampling. Format warnings remain
+visible for review; caching does not imply that the prompt passed every
+structural check. Explicit reuse is authoritative, including any manual edits.
+Automatic mode requires this addon's Apple GPU CLIP loader to identify the
+actual loaded checkpoint. Bypass and reuse skip autoregressive enhancement;
+the shared Qwen conditioning encoder still loads when H3 needs it.
+ComfyUI can also reuse the node and conditioning outputs directly from memory
+when only the video seed changes; in that case the preview retains the last
+execution report, rather than indicating a new enhancement call.
+
+The video branch uses the installed FL2V Turbo 8-step v1.0 LoRA at strength
+1.0, Euler, Simple, eight steps, video shift 12 and audio shift 3, matching
+the [Turbo publisher's configuration](https://github.com/ModelTC/Minimax-H3-Turbo/blob/main/COMFYUI_SETUP_AND_INFERENCE.md).
+Both the guider and scheduler consume the patched model. The default five
+seconds and 0.4 MP canvas are retained; dimensions still align to 32 pixels.
+For a short product smoke test use 0.7 seconds and 0.2 MP (22 frames at 24fps).
+Eight steps reduce sampling work but do not remove loading, encoding or VAE
+decoding time, and should be reviewed for motion/audio quality.
+
+Rebuild the additive example with `python scripts/build_reuse_workflow.py`.
