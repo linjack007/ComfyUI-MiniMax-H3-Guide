@@ -1,6 +1,5 @@
 """Build an additive upgrade from the existing safe Apple GPU example."""
 
-import copy
 import json
 from pathlib import Path
 import uuid
@@ -64,7 +63,7 @@ def build():
     enhancer["widgets_values"][1] = "Recommended mode: I2VA. Single exact first-frame image; no last-frame, reference video or reference audio. Preserve any explicit timing in the draft."
     enhancer["widgets_values"] = [True, "自动生成并缓存", "", 0] + enhancer["widgets_values"]
     enhancer["outputs"][0]["links"] = [241, 234]
-    enhancer["size"] = [620, 1100]
+    enhancer["size"] = [620, 980]
     pulled[13]["inputs"] = []
     pulled[13]["widgets_values"] = [original_values[6]]
     pulled[13]["outputs"][0]["links"] = [230, 251]
@@ -102,7 +101,7 @@ def build():
                                inputs=[],outputs=[],properties={},widgets_values=[note]))
     graph["groups"] = []
     graph["last_node_id"] = 140; graph["last_link_id"] = 251
-    graph["extra"]["ds"] = {"scale": .5, "offset": [100, 400]}
+    graph["extra"]["ds"] = {"scale": .6, "offset": [40, 80]}
     for node in graph["nodes"] + sub["nodes"]: node.pop("widgets_values_named", None)
     return graph
 

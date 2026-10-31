@@ -430,7 +430,7 @@
       ],
       "size": [
         620,
-        1100
+        980
       ],
       "flags": {},
       "order": 16,
@@ -2275,10 +2275,10 @@
     "VHS_MetadataImage": true,
     "VHS_KeepIntermediate": true,
     "ds": {
-      "scale": 0.5,
+      "scale": 0.6,
       "offset": [
-        100,
-        400
+        40,
+        80
       ]
     }
   },
